@@ -1,0 +1,177 @@
+﻿<html>
+<head>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.0/jquery.min.js"></script>
+    <script type="text/javascript">
+        var tablesToExcel = (function () {
+            var uri = 'data:application/vnd.ms-excel;base64,'
+                , html_start = `<html xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">`
+                , template_ExcelWorksheet = `<x:ExcelWorksheet><x:Name>{SheetName}</x:Name><x:WorksheetSource HRef="sheet{SheetIndex}.htm"/></x:ExcelWorksheet>`
+                , template_ListWorksheet = `<o:File HRef="sheet{SheetIndex}.htm"/>`
+                , template_HTMLWorksheet = `
+------=_NextPart_dummy
+Content-Location: sheet{SheetIndex}.htm
+Content-Type: text/html; charset=windows-1252
+
+` + html_start + `
+<head>
+      <meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+      <link id="Main-File" rel="Main-File" href="../WorkBook.htm">
+      <link rel="File-List" href="filelist.xml">
+</head>
+<body><table>{SheetContent}</table></body>
+</html>`
+                , template_WorkBook = `MIME-Version: 1.0
+X-Document-Type: Workbook
+Content-Type: multipart/related; boundary="----=_NextPart_dummy"
+
+------=_NextPart_dummy
+Content-Location: WorkBook.htm
+Content-Type: text/html; charset=windows-1252
+
+` + html_start + `
+<head>
+<meta name="Excel Workbook Frameset">
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<link rel="File-List" href="filelist.xml">
+<!--[if gte mso 9]><xml>
+     <x:ExcelWorkbook>
+      <x:ExcelWorksheets>{ExcelWorksheets}</x:ExcelWorksheets>
+      <x:ActiveSheet>0</x:ActiveSheet>
+     </x:ExcelWorkbook>
+</xml><![endif]-->
+</head>
+<frameset>
+      <frame src="sheet0.htm" name="frSheet">
+      <noframes><body><p>This page uses frames, but your browser does not support them.</p></body></noframes>
+</frameset>
+</html>
+{HTMLWorksheets}
+Content-Location: filelist.xml
+Content-Type: text/xml; charset="utf-8"
+
+<xml xmlns:o="urn:schemas-microsoft-com:office:office">
+      <o:MainFile HRef="../WorkBook.htm"/>
+      {ListWorksheets}
+      <o:File HRef="filelist.xml"/>
+</xml>
+------=_NextPart_dummy--
+`
+                , base64 = function (s) { return window.btoa(unescape(encodeURIComponent(s))) }
+                , format = function (s, c) { return s.replace(/{(\w+)}/g, function (m, p) { return c[p]; }) }
+            return function (tables, filename) {
+                var context_WorkBook = {
+                    ExcelWorksheets: ''
+                    , HTMLWorksheets: ''
+                    , ListWorksheets: ''
+                };
+                var tables = jQuery(tables);
+                $.each(tables, function (SheetIndex) {
+                    var $table = $(this);
+                    var SheetName = $table.attr('data-SheetName');
+                    if ($.trim(SheetName) === '') {
+                        SheetName = 'Sheet' + SheetIndex;
+                    }
+                    context_WorkBook.ExcelWorksheets += format(template_ExcelWorksheet, {
+                        SheetIndex: SheetIndex
+                        , SheetName: SheetName
+                    });
+                    context_WorkBook.HTMLWorksheets += format(template_HTMLWorksheet, {
+                        SheetIndex: SheetIndex
+                        , SheetContent: $table.html()
+                    });
+                    context_WorkBook.ListWorksheets += format(template_ListWorksheet, {
+                        SheetIndex: SheetIndex
+                    });
+                });
+
+                var link = document.createElement("A");
+                link.href = uri + base64(format(template_WorkBook, context_WorkBook));
+                link.download = filename || 'Workbook.xls';
+                link.target = '_blank';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+        })(jQuery);
+    </script>
+</head>
+<body>
+    <button onclick="tablesToExcel('#table_1,#table_2', 'WorkSheet.xls');">HTML Tables to XLS sheets</button>
+    <table id="table_1" data-SheetName="My custom sheet 1">
+        <thead>
+            <tr>
+                <td colspan="4" style="border-color:#fff;">
+                    Left info
+                </td>
+                <td colspan="3" class="text-right" style="border-color:#fff;">
+                    Right info
+                </td>
+            </tr>
+            <tr>
+                <th colspan="7" style="border-color:green;text-decoration:underline;font-size:2em;" class="text-center">
+                    Title
+                </th>
+            </tr>
+            <tr>
+                <th colspan="7" style="border-left-color:#fff; border-right-color:#fff;border-top-color:#fff;text-decoration:underline;font-size:1.5em;" class="text-center">
+                    Subtitle
+                </th>
+            </tr>
+            <tr>
+                <th colspan="7" style="border-left-color:#fff;border-right-color:#fff;border-top-color:#fff;height:50px;">
+                    Spacer
+                </th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td style="mso-number-format:'\@'">1</td>
+                <td style="mso-number-format:'General'">2</td>
+                <td style="mso-number-format:'0\.00'">3</td>
+                <td>info</td>
+                <td>info</td>
+                <td>info</td>
+                <td>info</td>
+            </tr>
+        </tbody>
+    </table>
+    <table id="table_2" data-SheetName="My custom worksheet 2">
+        <thead>
+            <tr>
+                <td colspan="2" style="border-color:#fff;">
+                    Left info 2
+                </td>
+                <td colspan="2" class="text-right" style="border-color:#fff;">
+                    Right info 2
+                </td>
+            </tr>
+            <tr>
+                <th colspan="4" style="border-color:#fff;text-decoration:underline;font-size:2em;" class="text-center">
+                    Title 2
+                </th>
+            </tr>
+            <tr>
+                <th colspan="4" style="border-left-color:#fff; border-right-color:#fff;border-top-color:#fff;text-decoration:underline;font-size:1.5em;" class="text-center">
+                    Subtitle 2
+                </th>
+            </tr>
+            <tr>
+                <th colspan="4" style="border-left-color:#fff;border-right-color:#fff;border-top-color:#fff;height:50px;">
+                    Spacer 2
+                </th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td style="mso-number-format:'\@'">3</td>
+                <td style="mso-number-format:'General'">4</td>
+                <td style="mso-number-format:'0\.00'">5</td>
+                <td>info2</td>
+                <td>info3</td>
+                <td>info4</td>
+                <td>info5</td>
+            </tr>
+        </tbody>
+    </table>
+</body>
+</html>
